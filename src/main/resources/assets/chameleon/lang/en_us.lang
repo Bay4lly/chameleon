@@ -8,6 +8,7 @@ chameleon.config.general.tooltip=General options
 
 # GUI
 chameleon.gui.editor.pick_skin=Pick General Skin
+chameleon.gui.editor.main=Main panel
 chameleon.gui.editor.pick_skin_bone=Pick Bone Skin
 chameleon.gui.editor.make_default=Save Bone Skin
 chameleon.gui.editor.reset_bone=Reset Bone Skin
