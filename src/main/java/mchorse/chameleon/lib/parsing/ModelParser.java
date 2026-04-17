@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import mchorse.chameleon.lib.data.model.Model;
 import mchorse.chameleon.lib.data.model.ModelBone;
 import mchorse.chameleon.lib.data.model.ModelCube;
+import mchorse.chameleon.lib.data.model.ModelPolyMesh;
 import mchorse.chameleon.lib.data.model.ModelUV;
 import net.minecraft.client.util.JsonException;
 
@@ -98,6 +99,11 @@ public class ModelParser
                 parseCubes(model, bone, boneElement.get("cubes").getAsJsonArray());
             }
 
+            if (boneElement.has("poly_mesh"))
+            {
+                parsePolyMesh(model, bone, boneElement.get("poly_mesh").getAsJsonObject());
+            }
+
             flatBones.put(bone.id, bone);
         }
 
@@ -134,6 +140,106 @@ public class ModelParser
         {
             bone.cubes.add(parseCube(model, element.getAsJsonObject()));
         }
+    }
+
+    private static void parsePolyMesh(Model model, ModelBone bone, JsonObject object)
+    {
+        ModelPolyMesh mesh = new ModelPolyMesh();
+
+        mesh.normalizedUvs = object.has("normalized_uvs") && object.get("normalized_uvs").getAsBoolean();
+
+        if (object.has("positions"))
+        {
+            for (JsonElement element : object.get("positions").getAsJsonArray())
+            {
+                Vector3f vector = new Vector3f();
+
+                parseVector(element, vector);
+                vector.x *= -1;
+                vector.scale(1 / 16F);
+                mesh.positions.add(vector);
+            }
+        }
+
+        if (object.has("uvs"))
+        {
+            float tw = 1F / model.textureWidth;
+            float th = 1F / model.textureHeight;
+
+            for (JsonElement element : object.get("uvs").getAsJsonArray())
+            {
+                Vector2f vector = new Vector2f();
+
+                parseVector(element, vector);
+
+                if (!mesh.normalizedUvs)
+                {
+                    vector.x *= tw;
+                    vector.y *= th;
+                }
+                
+                vector.y = 1.0f - vector.y;
+
+                mesh.uvs.add(vector);
+            }
+        }
+
+        if (object.has("polys"))
+        {
+            for (JsonElement element : object.get("polys").getAsJsonArray())
+            {
+                ModelPolyMesh.ModelPoly poly = new ModelPolyMesh.ModelPoly();
+                JsonArray vertexArrayJson = element.getAsJsonArray();
+                int size = vertexArrayJson.size();
+
+                Vector3f normal = new Vector3f(0, 1, 0);
+
+                if (size >= 3)
+                {
+                    int idx0 = vertexArrayJson.get(size - 1).getAsJsonArray().get(0).getAsInt();
+                    int idx1 = vertexArrayJson.get(size - 2).getAsJsonArray().get(0).getAsInt();
+                    int idx2 = vertexArrayJson.get(size - 3).getAsJsonArray().get(0).getAsInt();
+
+                    Vector3f p0 = mesh.positions.get(idx0);
+                    Vector3f p1 = mesh.positions.get(idx1);
+                    Vector3f p2 = mesh.positions.get(idx2);
+
+                    Vector3f v1 = new Vector3f(p1);
+                    v1.sub(p0);
+                    Vector3f v2 = new Vector3f(p2);
+                    v2.sub(p0);
+
+                    normal.cross(v2, v1);
+
+                    if (normal.lengthSquared() > 0)
+                    {
+                        normal.normalize();
+                    }
+                    else
+                    {
+                        normal.set(0, 1, 0);
+                    }
+                }
+
+                int normalIndex = mesh.normals.size();
+                mesh.normals.add(normal);
+
+                for (int i = size - 1; i >= 0; i--)
+                {
+                    JsonArray vertexArray = vertexArrayJson.get(i).getAsJsonArray();
+
+                    poly.vertices.add(new ModelPolyMesh.ModelPolyVertex(
+                        vertexArray.get(0).getAsInt(),
+                        normalIndex,
+                        vertexArray.get(2).getAsInt()
+                    ));
+                }
+
+                mesh.polys.add(poly);
+            }
+        }
+
+        bone.polyMesh = mesh;
     }
 
     private static ModelCube parseCube(Model model, JsonObject object)

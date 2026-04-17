@@ -2,7 +2,7 @@
     {
         "modid": "chameleon_morph",
         "name": "Chameleon",
-        "description": "Loads animated Blockbench models as Metamorph morphs",
+        "description": "Loads animated Blockbench models as Metamorph morphs. Thanks to bay4lly for mesh support :3.",
         "version": "${version}",
         "mcversion": "${mcversion}",
         "url": "",

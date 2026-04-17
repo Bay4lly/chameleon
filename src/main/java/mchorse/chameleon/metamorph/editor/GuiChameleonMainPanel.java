@@ -22,12 +22,20 @@ import mchorse.metamorph.client.gui.editor.GuiAnimation;
 import mchorse.metamorph.client.gui.editor.GuiMorphPanel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.NBTTagCompound;
 
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import java.io.File;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import java.io.FileReader;
+import java.io.FileWriter;
 
 /**
  * Custom model morph panel which allows editing custom textures for materials of the custom model morph
@@ -38,9 +46,15 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
     public GuiButtonElement skin;
     public GuiTexturePicker picker;
 
+    public GuiButtonElement skinBone;
+    public GuiButtonElement makeDefault;
+    public GuiButtonElement resetBone;
+    public GuiButtonElement resetDefault;
+
     public GuiButtonElement createPose;
     public GuiStringListElement bones;
     public GuiToggleElement absoluteBrightness;
+    public GuiToggleElement shading;
     public GuiTrackpadElement glow;
     public GuiColorElement color;
     public GuiToggleElement fixed;
@@ -96,15 +110,58 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         {
             this.picker.refresh();
             this.picker.fill(this.morph.skin);
+            this.picker.callback = (rl) -> this.morph.skin = RLUtils.clone(rl);
             this.add(this.picker);
             this.picker.resize();
         });
+        
+        this.skinBone = new GuiButtonElement(mc, IKey.lang("chameleon.gui.editor.pick_skin_bone"), (b) ->
+        {
+            this.picker.refresh();
+            ResourceLocation current = this.morph.boneSkins.get(this.editor.chameleonModelRenderer.boneName);
+            if (current == null) {
+                current = this.morph.skin;
+            }
+            this.picker.fill(current);
+            this.picker.callback = (rl) -> {
+                if (rl != null) {
+                    this.morph.boneSkins.put(this.editor.chameleonModelRenderer.boneName, RLUtils.clone(rl));
+                } else {
+                    this.morph.boneSkins.remove(this.editor.chameleonModelRenderer.boneName);
+                }
+                this.editor.chameleonModelRenderer.boneName = this.editor.chameleonModelRenderer.boneName;
+            };
+            this.add(this.picker);
+            this.picker.resize();
+        });
+
+        this.makeDefault = new GuiButtonElement(mc, IKey.lang("chameleon.gui.editor.make_default"), (b) ->
+        {
+            ResourceLocation current = this.morph.boneSkins.get(this.editor.chameleonModelRenderer.boneName);
+            if (current != null) {
+                this.saveDefaultBoneSkin(this.editor.chameleonModelRenderer.boneName, current);
+            }
+        });
+
+        this.resetBone = new GuiButtonElement(mc, IKey.lang("chameleon.gui.editor.reset_bone"), (b) ->
+        {
+            this.morph.boneSkins.remove(this.editor.chameleonModelRenderer.boneName);
+            this.pickBone(this.editor.chameleonModelRenderer.boneName);
+        });
+
+        this.resetDefault = new GuiButtonElement(mc, IKey.lang("chameleon.gui.editor.reset_default"), (b) ->
+        {
+            this.removeDefaultBoneSkin(this.editor.chameleonModelRenderer.boneName);
+            this.pickBone(this.editor.chameleonModelRenderer.boneName);
+        });
+
         this.picker = new GuiTexturePicker(mc, (rl) -> this.morph.skin = RLUtils.clone(rl));
 
         this.createPose = new GuiButtonElement(mc, this.createLabel, this::createResetPose);
         this.bones = new GuiStringListElement(mc, this::pickBone);
         this.bones.background().context(() -> createCopyPasteMenu(this::copyCurrentPose, this::pastePose));
         this.absoluteBrightness = new GuiToggleElement(mc, IKey.lang("chameleon.gui.editor.absolute_brightness"), this::toggleAbsoluteBrightness);
+        this.shading = new GuiToggleElement(mc, IKey.lang("chameleon.gui.editor.shading"), this::toggleShading);
         this.glow = new GuiTrackpadElement(mc, this::setGlow).limit(0, 1).values(0.01, 0.1, 0.001);
         this.glow.tooltip(IKey.lang("chameleon.gui.editor.glow"));
         this.color = new GuiColorElement(mc, this::setColor).direction(Direction.RIGHT);
@@ -121,16 +178,23 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         this.scaleGui = new GuiTrackpadElement(mc, (value) -> this.morph.scaleGui = value.floatValue());
         this.scaleGui.tooltip(IKey.lang("chameleon.gui.editor.scale_gui"));
 
-        this.skin.flex().relative(this).set(10, 10, 110, 20);
+        this.skin.flex().relative(this).set(10, 10, 190, 20);
+        this.createPose.flex().relative(this.skin).y(1F, 5).w(1F).h(20);
+        
+        this.skinBone.flex().relative(this.createPose).y(1F, 5).w(1F).h(20);
+        this.makeDefault.flex().relative(this.skinBone).y(1F, 5).w(0.5F, -2).h(20);
+        this.resetBone.flex().relative(this.makeDefault).x(1F, 4).w(1F, 0).h(20);
+        this.resetDefault.flex().relative(this.makeDefault).y(1F, 5).w(2F, 4).h(20);
+
         this.picker.flex().relative(this).wh(1F, 1F);
 
-        this.createPose.flex().relative(this.skin).y(1F, 5).w(1F).h(20);
-        this.bones.flex().relative(this.createPose).y(1F, 5).w(1F).hTo(this.absoluteBrightness.flex(), -10);
-        this.animated.flex().relative(this).x(10).y(1F, -10).w(110).anchorY(1);
+        this.bones.flex().relative(this.resetDefault).y(1F, 5).w(1F).hTo(this.absoluteBrightness.flex(), -10);
+        this.animated.flex().relative(this).x(10).y(1F, -10).w(190).anchorY(1);
         this.fixed.flex().relative(this.animated).y(-1F, -5).w(1F);
         this.color.flex().relative(this.fixed).y(-1F, -10).w(1F);
         this.glow.flex().relative(this.color).y(-1F, -10).w(1F);
-        this.absoluteBrightness.flex().relative(this.glow).y(-1F, -10).w(1F);
+        this.shading.flex().relative(this.glow).y(-1F, -10).w(1F);
+        this.absoluteBrightness.flex().relative(this.shading).y(-1F, -10).w(1F);
         this.transforms.flex().relative(this).set(0, 0, 256, 70).x(0.5F, -128).y(1, -80);
         this.animation.flex().relative(this).x(1F, -130).w(130);
 
@@ -158,7 +222,7 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         lowerBottom.flex().relative(this).xy(1F, 1F).w(130).anchor(1F, 1F).column(5).vertical().stretch().padding(10);
         lowerBottom.add(this.scale, this.scaleGui);
 
-        this.add(this.skin, this.createPose, this.animated, this.fixed, this.color, this.glow, this.absoluteBrightness, this.bones, this.transforms, this.animation, lowerBottom);
+        this.add(this.skin, this.skinBone, this.makeDefault, this.resetBone, this.resetDefault, this.createPose, this.animated, this.fixed, this.color, this.glow, this.shading, this.absoluteBrightness, this.bones, this.transforms, this.animation, lowerBottom);
     }
 
     private void copyCurrentPose()
@@ -238,6 +302,7 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         this.fixed.toggled(this.transform.fixed == AnimatedPoseTransform.FIXED);
         this.color.picker.setColor(this.transform.color.getRGBAColor());
         this.absoluteBrightness.toggled(this.transform.absoluteBrightness);
+        this.shading.toggled(this.transform.shading);
         this.glow.setValue(this.transform.glow);
         this.transforms.set(this.transform);
         this.editor.chameleonModelRenderer.boneName = bone;
@@ -246,6 +311,11 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
     private void toggleAbsoluteBrightness(GuiToggleElement toggle)
     {
         this.transform.absoluteBrightness = toggle.isToggled();
+    }
+
+    private void toggleShading(GuiToggleElement toggle)
+    {
+        this.transform.shading = toggle.isToggled();
     }
 
     private void setGlow(Double value)
@@ -301,12 +371,26 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         this.createPose.setVisible(model != null && !model.getBoneNames().isEmpty());
         this.createPose.label = pose == null ? this.createLabel : this.resetLabel;
         this.bones.setVisible(model != null && pose != null);
+        this.skinBone.setVisible(model != null && pose != null);
+        this.makeDefault.setVisible(model != null && pose != null);
+        this.resetBone.setVisible(model != null && pose != null);
+        this.resetDefault.setVisible(model != null && pose != null);
         this.absoluteBrightness.setVisible(model != null && pose != null);
+        this.shading.setVisible(model != null && pose != null);
         this.glow.setVisible(model != null && pose != null);
         this.color.setVisible(model != null && pose != null);
         this.fixed.setVisible(model != null && pose != null);
         this.animated.setVisible(model != null && pose != null);
         this.transforms.setVisible(model != null && pose != null);
+
+        if (pose == null)
+        {
+            this.bones.flex().relative(this.createPose);
+        }
+        else
+        {
+            this.bones.flex().relative(this.resetDefault);
+        }
 
         if (model != null)
         {
@@ -317,6 +401,94 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
             if (this.morph.pose != null)
             {
                 this.pickBone(model.getBoneNames().get(0));
+            }
+        }
+
+        if (this.getParent() != null)
+        {
+            this.getParent().resize();
+        }
+    }
+
+    private void saveDefaultBoneSkin(String boneName, ResourceLocation current)
+    {
+        File folder = new File(mchorse.chameleon.ClientProxy.modelsFile, this.morph.getKey());
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+        File config = new File(folder, "config.json");
+        JsonObject json = new JsonObject();
+        if (config.exists()) {
+            try (FileReader reader = new FileReader(config)) {
+                json = new JsonParser().parse(reader).getAsJsonObject();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        JsonObject textures;
+        if (json.has("textures") && json.get("textures").isJsonObject()) {
+            textures = json.getAsJsonObject("textures");
+        } else {
+            textures = new JsonObject();
+            json.add("textures", textures);
+        }
+        
+        textures.addProperty(boneName, current.toString());
+        
+        try (FileWriter writer = new FileWriter(config)) {
+            writer.write(json.toString());
+            
+            // Also update the loaded model in ClientProxy
+            ChameleonModel model = this.morph.getModel();
+            if (model != null) {
+                model.defaultBoneSkins.put(boneName, current);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void removeDefaultBoneSkin(String boneName)
+    {
+        File folder = new File(mchorse.chameleon.ClientProxy.modelsFile, this.morph.getKey());
+        File config = new File(folder, "config.json");
+        if (!config.exists()) {
+            return;
+        }
+
+        JsonObject json = new JsonObject();
+        try (FileReader reader = new FileReader(config)) {
+            json = new JsonParser().parse(reader).getAsJsonObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (json.has("textures") && json.get("textures").isJsonObject()) {
+            JsonObject textures = json.getAsJsonObject("textures");
+            if (textures.has(boneName)) {
+                textures.remove(boneName);
+                
+                if (textures.entrySet().isEmpty()) {
+                    json.remove("textures");
+                }
+
+                try (FileWriter writer = new FileWriter(config)) {
+                    if (json.entrySet().isEmpty()) {
+                        writer.close();
+                        config.delete();
+                    } else {
+                        writer.write(json.toString());
+                    }
+                    
+                    // Also update the loaded model in ClientProxy
+                    ChameleonModel model = this.morph.getModel();
+                    if (model != null) {
+                        model.defaultBoneSkins.remove(boneName);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ package mchorse.chameleon.metamorph.editor.render;
 
 import mchorse.chameleon.lib.data.model.ModelBone;
 import mchorse.chameleon.lib.data.model.ModelCube;
+import mchorse.chameleon.lib.data.model.ModelPolyMesh;
 import mchorse.chameleon.lib.data.model.ModelQuad;
 import mchorse.chameleon.lib.data.model.ModelVertex;
 import mchorse.chameleon.lib.render.IChameleonRenderProcessor;
@@ -56,9 +57,32 @@ public class ChameleonStencilRenderer implements IChameleonRenderProcessor
             renderCube(builder, stack, cube);
         }
 
+        if (bone.polyMesh != null)
+        {
+            renderMesh(builder, stack, bone.polyMesh);
+        }
+
         Tessellator.getInstance().draw();
 
         return false;
+    }
+
+    private void renderMesh(BufferBuilder builder, MatrixStack stack, ModelPolyMesh mesh)
+    {
+        for (ModelPolyMesh.ModelPoly poly : mesh.polys)
+        {
+            for (ModelPolyMesh.ModelPolyVertex vertex : poly.vertices)
+            {
+                this.vertex.set(mesh.positions.get(vertex.positionIndex));
+                this.vertex.w = 1;
+                stack.getModelMatrix().transform(this.vertex);
+
+                builder.pos(this.vertex.getX(), this.vertex.getY(), this.vertex.getZ())
+                    .tex(mesh.uvs.get(vertex.uvIndex).x, mesh.uvs.get(vertex.uvIndex).y)
+                    .color(this.r, this.g, this.b, this.a)
+                    .endVertex();
+            }
+        }
     }
 
     private void renderCube(BufferBuilder builder, MatrixStack stack, ModelCube cube)

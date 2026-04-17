@@ -8,6 +8,10 @@ chameleon.config.general.tooltip=Общие опции
 
 # GUI
 chameleon.gui.editor.pick_skin=Выбрать скин
+chameleon.gui.editor.pick_skin_bone=Выбрать текстуру для кости
+chameleon.gui.editor.make_default=Сохранить текстуру кости
+chameleon.gui.editor.reset_bone=Сбросить текстуру кости
+chameleon.gui.editor.reset_default=Сбросить сохраненную текстуру
 chameleon.gui.editor.main=Главная панель
 chameleon.gui.editor.create_pose=Создать позу
 chameleon.gui.editor.reset_pose=Сбросить позу

@@ -10,6 +10,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
+import java.util.HashMap;
+import net.minecraft.util.ResourceLocation;
 
 import com.google.common.collect.ImmutableList;
 
@@ -19,6 +22,7 @@ public class ChameleonModel
     public Model model;
     public Animations animations;
     public long lastUpdate;
+    public Map<String, ResourceLocation> defaultBoneSkins = new HashMap<>();
 
     private List<String> boneNames;
     private boolean isStatic;

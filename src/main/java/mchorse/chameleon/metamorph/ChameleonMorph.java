@@ -29,10 +29,13 @@ import mchorse.metamorph.bodypart.IBodyPartProvider;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.util.EnumHandSide;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -40,10 +43,13 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.Objects;
+import java.util.Map;
+import java.util.HashMap;
 
 public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, ISyncableMorph, IAnimationProvider, IMorphGenerator
 {
     public ResourceLocation skin;
+    public Map<String, ResourceLocation> boneSkins = new HashMap<String, ResourceLocation>();
     public AnimatedPose pose;
     public ActionsConfig actions = new ActionsConfig();
     public BodyPartManager parts = new BodyPartManager();
@@ -253,6 +259,73 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
     }
 
     @SideOnly(Side.CLIENT)
+    private void renderHeldItems(EntityLivingBase target, float partialTicks)
+    {
+        ChameleonModel chameleonModel = this.getModel();
+
+        if (chameleonModel == null)
+        {
+            return;
+        }
+
+        Model model = chameleonModel.model;
+        ItemStack main = target.getHeldItemMainhand();
+        ItemStack off = target.getHeldItemOffhand();
+
+        if (main.isEmpty() && off.isEmpty())
+        {
+            return;
+        }
+
+        boolean rightHanded = target.getPrimaryHand() == EnumHandSide.RIGHT;
+        ItemStack leftStack = rightHanded ? off : main;
+        ItemStack rightStack = rightHanded ? main : off;
+
+        if (!rightStack.isEmpty())
+        {
+            this.renderHeldItem(target, model, rightStack, "right_arm_item", EnumHandSide.RIGHT);
+        }
+
+        if (!leftStack.isEmpty())
+        {
+            this.renderHeldItem(target, model, leftStack, "left_arm_item", EnumHandSide.LEFT);
+        }
+    }
+
+    @SideOnly(Side.CLIENT)
+    private void renderHeldItem(EntityLivingBase target, Model model, ItemStack stack, String boneName, EnumHandSide side)
+    {
+        GlStateManager.pushMatrix();
+
+        if (ChameleonRenderer.postRender(model, boneName))
+        {
+            // Reset rotation to match arm's forward direction if needed, 
+            // but postRender already applies bone's rotation.
+            // Items in hand usually need a small adjustment.
+            
+            if (side == EnumHandSide.LEFT)
+            {
+                GlStateManager.rotate(180, 0, 1, 0);
+            }
+
+            // Clean slate rotation logic
+            // The item renders normally upright. The bone is probably pointing down.
+            // So we just need to rotate it so the handle is in the hand, pointing forward.
+            
+            GlStateManager.rotate(-90, 1, 0, 0); // Point item forward
+
+            // Translate into the hand (upwards and slightly forward relative to bone)
+            GlStateManager.translate(0, 0.15, 0.0);
+            
+            Minecraft.getMinecraft().getItemRenderer().renderItemSide(target, stack, 
+                side == EnumHandSide.RIGHT ? ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND : ItemCameraTransforms.TransformType.THIRD_PERSON_LEFT_HAND, 
+                side == EnumHandSide.LEFT);
+        }
+
+        GlStateManager.popMatrix();
+    }
+
+    @SideOnly(Side.CLIENT)
     private void renderModel(EntityLivingBase target, float partialTicks)
     {
         GlStateManager.enableBlend();
@@ -280,10 +353,9 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
         this.applyPose(model, partialTicks);
 
         /* Render the model */
-        if (this.skin != null)
-        {
-            Minecraft.getMinecraft().renderEngine.bindTexture(this.skin);
-        }
+        ChameleonRenderer.defaultSkin = this.skin;
+        ChameleonRenderer.boneSkins = this.boneSkins;
+        ChameleonRenderer.defaultBoneSkins = chameleonModel.defaultBoneSkins;
 
         boolean hurtLight = RenderLightmap.set(target, partialTicks);
 
@@ -293,6 +365,9 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
         {
             RenderLightmap.unset();
         }
+
+        /* Render held items */
+        this.renderHeldItems(target, partialTicks);
 
         /* Render body parts */
         GlStateManager.color(1, 1, 1);
@@ -363,6 +438,7 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
             current.scale.z = Interpolations.lerp(initial.scale.z, current.scale.z, factor) + (transform.scaleZ - 1);
 
             bone.absoluteBrightness = transform.absoluteBrightness;
+            bone.shading = transform.shading;
             bone.glow = transform.glow;
             bone.color.copy(transform.color);
         }
@@ -435,6 +511,7 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
             ChameleonMorph morph = (ChameleonMorph) obj;
 
             result = result && Objects.equals(morph.skin, this.skin);
+            result = result && Objects.equals(morph.boneSkins, this.boneSkins);
             result = result && Objects.equals(morph.pose, this.pose);
             result = result && Objects.equals(morph.parts, this.parts);
             result = result && Objects.equals(morph.actions, this.actions);
@@ -484,6 +561,10 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
                 this.isActionPlayer = animated.isActionPlayer;
 
                 this.skin = RLUtils.clone(animated.skin);
+                this.boneSkins.clear();
+                for (Map.Entry<String, ResourceLocation> entry : animated.boneSkins.entrySet()) {
+                    this.boneSkins.put(entry.getKey(), RLUtils.clone(entry.getValue()));
+                }
                 this.pose = animated.pose == null ? null : animated.pose.clone();
                 this.actions.copy(animated.actions);
                 this.parts.merge(animated.parts);
@@ -587,6 +668,10 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
             ChameleonMorph morph = (ChameleonMorph) from;
 
             this.skin = RLUtils.clone(morph.skin);
+            this.boneSkins.clear();
+            for (Map.Entry<String, ResourceLocation> entry : morph.boneSkins.entrySet()) {
+                this.boneSkins.put(entry.getKey(), RLUtils.clone(entry.getValue()));
+            }
 
             if (morph.pose != null)
             {
@@ -642,6 +727,16 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
             tag.setTag("Skin", RLUtils.writeNbt(this.skin));
         }
 
+        if (!this.boneSkins.isEmpty())
+        {
+            NBTTagCompound skinsTag = new NBTTagCompound();
+            for (Map.Entry<String, ResourceLocation> entry : this.boneSkins.entrySet())
+            {
+                skinsTag.setTag(entry.getKey(), RLUtils.writeNbt(entry.getValue()));
+            }
+            tag.setTag("BoneSkins", skinsTag);
+        }
+
         if (this.pose != null)
         {
             tag.setTag("Pose", this.pose.toNBT());
@@ -692,6 +787,16 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
         if (tag.hasKey("Skin"))
         {
             this.skin = RLUtils.create(tag.getTag("Skin"));
+        }
+
+        this.boneSkins.clear();
+        if (tag.hasKey("BoneSkins", Constants.NBT.TAG_COMPOUND))
+        {
+            NBTTagCompound skinsTag = tag.getCompoundTag("BoneSkins");
+            for (String key : skinsTag.getKeySet())
+            {
+                this.boneSkins.put(key, RLUtils.create(skinsTag.getTag(key)));
+            }
         }
 
         if (tag.hasKey("Pose", Constants.NBT.TAG_COMPOUND))

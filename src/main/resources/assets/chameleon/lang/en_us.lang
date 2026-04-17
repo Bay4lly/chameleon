@@ -7,11 +7,16 @@ chameleon.config.general.title=General
 chameleon.config.general.tooltip=General options
 
 # GUI
-chameleon.gui.editor.pick_skin=Pick skin
-chameleon.gui.editor.main=Main panel
+chameleon.gui.editor.pick_skin=Pick General Skin
+chameleon.gui.editor.pick_skin_bone=Pick Bone Skin
+chameleon.gui.editor.make_default=Save Bone Skin
+chameleon.gui.editor.reset_bone=Reset Bone Skin
+chameleon.gui.editor.reset_default=Reset Default Bone Skin
+chameleon.gui.editor.main=Main Panel
 chameleon.gui.editor.create_pose=Create pose
 chameleon.gui.editor.reset_pose=Reset pose
 chameleon.gui.editor.absolute_brightness=Absolute Brightness
+chameleon.gui.editor.shading=Shading
 chameleon.gui.editor.glow=Limb Glow
 chameleon.gui.editor.color=Limb Color
 chameleon.gui.editor.fixed=Fixate movement

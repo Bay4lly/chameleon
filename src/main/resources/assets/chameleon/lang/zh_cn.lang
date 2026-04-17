@@ -9,6 +9,10 @@ chameleon.config.general.tooltip=常规选项
 # GUI
 chameleon.gui.editor.pick_skin=选择皮肤
 chameleon.gui.editor.main=主面板
+chameleon.gui.editor.pick_skin_bone=选择骨骼皮肤
+chameleon.gui.editor.make_default=保存骨骼皮肤
+chameleon.gui.editor.reset_bone=重置骨骼皮肤
+chameleon.gui.editor.reset_default=重置默认皮肤
 chameleon.gui.editor.create_pose=创建姿势
 chameleon.gui.editor.reset_pose=重置姿势
 chameleon.gui.editor.absolute_brightness=绝对亮度

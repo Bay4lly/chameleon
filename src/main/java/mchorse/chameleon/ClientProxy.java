@@ -21,6 +21,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 
 @SideOnly(Side.CLIENT)
 public class ClientProxy extends CommonProxy
@@ -172,7 +175,19 @@ public class ClientProxy extends CommonProxy
                 List<File> trackingFiles = new ArrayList<File>();
 
                 trackingFiles.add(model);
-                chameleonModels.put(key, new ChameleonModel(theModel, theAnimations, trackingFiles, lastUpdated));
+                ChameleonModel newChameleonModel = new ChameleonModel(theModel, theAnimations, trackingFiles, lastUpdated);
+                
+                File config = new File(modelFolder, "config.json");
+                if (config.exists()) {
+                    JsonObject configJson = this.loader.loadFile(config);
+                    if (configJson != null && configJson.has("textures") && configJson.get("textures").isJsonObject()) {
+                        for (Entry<String, JsonElement> entry : configJson.getAsJsonObject("textures").entrySet()) {
+                            newChameleonModel.defaultBoneSkins.put(entry.getKey(), mchorse.mclib.utils.resources.RLUtils.create(entry.getValue().getAsString()));
+                        }
+                    }
+                }
+
+                chameleonModels.put(key, newChameleonModel);
                 toCheck.remove(key);
             }
         }

@@ -13,6 +13,10 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.lwjgl.opengl.GL11;
 
+import net.minecraft.util.ResourceLocation;
+import java.util.Map;
+import java.util.HashMap;
+
 @SideOnly(Side.CLIENT)
 public class ChameleonRenderer
 {
@@ -20,6 +24,11 @@ public class ChameleonRenderer
     private static final ChameleonCubeRenderer CUBE_RENDERER = new ChameleonCubeRenderer();
     private static final ChameleonPostRenderer POST_RENDERER = new ChameleonPostRenderer();
     private static final ChameleonAxisRenderer AXIS_RENDERER = new ChameleonAxisRenderer();
+
+    public static ResourceLocation currentSkin;
+    public static ResourceLocation defaultSkin;
+    public static Map<String, ResourceLocation> boneSkins;
+    public static Map<String, ResourceLocation> defaultBoneSkins;
 
     /* Specific utility methods */
 
@@ -35,6 +44,11 @@ public class ChameleonRenderer
         GlStateManager.enableBlend();
 
         GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+
+        if (defaultSkin != null) {
+            net.minecraft.client.Minecraft.getMinecraft().renderEngine.bindTexture(defaultSkin);
+            currentSkin = defaultSkin;
+        }
 
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
         builder.begin(GL11.GL_QUADS, VertexBuilder.getFormat(true, true, true, true));

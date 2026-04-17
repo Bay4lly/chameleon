@@ -2,6 +2,7 @@ package mchorse.chameleon.metamorph.editor.render;
 
 import mchorse.chameleon.lib.data.model.ModelBone;
 import mchorse.chameleon.lib.data.model.ModelCube;
+import mchorse.chameleon.lib.data.model.ModelPolyMesh;
 import mchorse.chameleon.lib.data.model.ModelQuad;
 import mchorse.chameleon.lib.data.model.ModelVertex;
 import mchorse.chameleon.lib.render.ChameleonPostRenderer;
@@ -54,6 +55,11 @@ public class ChameleonHighlightRenderer implements IChameleonRenderProcessor
                 this.renderCubeForHighlight(builder, stack, cube);
             }
 
+            if (bone.polyMesh != null)
+            {
+                this.renderMeshForHighlight(builder, stack, bone.polyMesh);
+            }
+
             Tessellator.getInstance().draw();
 
             GlStateManager.pushMatrix();
@@ -77,6 +83,21 @@ public class ChameleonHighlightRenderer implements IChameleonRenderProcessor
         }
 
         return false;
+    }
+
+    private void renderMeshForHighlight(BufferBuilder builder, MatrixStack stack, ModelPolyMesh mesh)
+    {
+        for (ModelPolyMesh.ModelPoly poly : mesh.polys)
+        {
+            for (ModelPolyMesh.ModelPolyVertex vertex : poly.vertices)
+            {
+                this.vertex.set(mesh.positions.get(vertex.positionIndex));
+                this.vertex.w = 1;
+                stack.getModelMatrix().transform(this.vertex);
+
+                builder.pos(this.vertex.getX(), this.vertex.getY(), this.vertex.getZ()).endVertex();
+            }
+        }
     }
 
     private void renderCubeForHighlight(BufferBuilder builder, MatrixStack stack, ModelCube cube)

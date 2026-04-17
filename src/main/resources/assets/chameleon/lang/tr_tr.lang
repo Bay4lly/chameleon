@@ -1,0 +1,50 @@
+#PARSE_ESCAPES
+
+# Config
+chameleon.config.title=Chameleon
+
+chameleon.config.general.title=Genel
+chameleon.config.general.tooltip=Genel ayarlar
+
+# GUI
+chameleon.gui.editor.pick_skin=Genel Doku Seç
+chameleon.gui.editor.pick_skin_bone=Kemik Dokusu Seç
+chameleon.gui.editor.make_default=Dokuyu Kaydet
+chameleon.gui.editor.reset_bone=Kemik Dokusunu Sıfırla
+chameleon.gui.editor.reset_default=Kayıtlı Dokuyu Sil
+chameleon.gui.editor.main=Ana Panel
+chameleon.gui.editor.create_pose=Poz oluştur
+chameleon.gui.editor.reset_pose=Pozu sıfırla
+chameleon.gui.editor.absolute_brightness=Mutlak Parlaklık
+chameleon.gui.editor.shading=Gölgelendirme
+chameleon.gui.editor.glow=Parça Parlaması
+chameleon.gui.editor.color=Parça Rengi
+chameleon.gui.editor.fixed=Hareketi sabitle
+chameleon.gui.editor.animated=Hareketli poz
+chameleon.gui.editor.context.copy=Pozu kopyala
+chameleon.gui.editor.context.paste=Pozu yapıştır
+chameleon.gui.editor.context.children=Alt parçalara uygula
+
+chameleon.gui.editor.scale=Genel boyut
+chameleon.gui.editor.scale_gui=Arayüz boyutu
+
+chameleon.gui.editor.player=Aksiyon oynatıcı modu
+chameleon.gui.editor.player_tooltip=Bu morph'un "Hareketli" senkronize edilebilir aksiyonunu oynatmasına izin verir
+
+chameleon.gui.editor.actions.actions=Aksiyonlar
+chameleon.gui.editor.actions.action=Aksiyon
+
+chameleon.gui.editor.actions.clamp=Kelepçe
+chameleon.gui.editor.actions.reset=Sıfırla
+chameleon.gui.editor.actions.speed=Hız
+chameleon.gui.editor.actions.fade=Geçiş
+chameleon.gui.editor.actions.tick=Tik
+
+chameleon.gui.config.models=Modelleri aç...
+chameleon.gui.config.tutorial=Video eğitimleri
+chameleon.gui.config.discord=Discord
+chameleon.gui.config.wiki=Wiki
+
+# Morph stuff
+morph.section.chameleon=Chameleon
+morph.category.chameleon=Hareketli modeller

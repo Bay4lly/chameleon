@@ -78,7 +78,7 @@ public class ChameleonLoader
         return null;
     }
 
-    private JsonObject loadFile(File file)
+    public JsonObject loadFile(File file)
     {
         try
         {
