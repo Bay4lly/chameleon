@@ -16,6 +16,8 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -24,6 +26,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import net.minecraft.util.ResourceLocation;
 
 @SideOnly(Side.CLIENT)
 public class ClientProxy extends CommonProxy
@@ -211,5 +215,125 @@ public class ClientProxy extends CommonProxy
     public Collection<String> getModelKeys()
     {
         return chameleonModels.keySet();
+    }
+
+    public static void saveDefaultBoneSkin(String key, String boneName, ResourceLocation skin)
+    {
+        File folder = new File(modelsFile, key);
+
+        if (!folder.exists())
+        {
+            folder.mkdirs();
+        }
+
+        File config = new File(folder, "config.json");
+        JsonObject json = new JsonObject();
+
+        if (config.exists())
+        {
+            try (FileReader reader = new FileReader(config))
+            {
+                json = new JsonParser().parse(reader).getAsJsonObject();
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+        JsonObject textures;
+
+        if (json.has("textures") && json.get("textures").isJsonObject())
+        {
+            textures = json.getAsJsonObject("textures");
+        }
+        else
+        {
+            textures = new JsonObject();
+            json.add("textures", textures);
+        }
+
+        textures.addProperty(boneName, skin.toString());
+
+        try (FileWriter writer = new FileWriter(config))
+        {
+            writer.write(json.toString());
+
+            ChameleonModel model = chameleonModels.get(key);
+
+            if (model != null)
+            {
+                model.defaultBoneSkins.put(boneName, skin);
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public static void removeDefaultBoneSkin(String key, String boneName)
+    {
+        File folder = new File(modelsFile, key);
+        File config = new File(folder, "config.json");
+
+        if (!config.exists())
+        {
+            return;
+        }
+
+        JsonObject json = new JsonObject();
+
+        try (FileReader reader = new FileReader(config))
+        {
+            json = new JsonParser().parse(reader).getAsJsonObject();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        if (!json.has("textures") || !json.get("textures").isJsonObject())
+        {
+            return;
+        }
+
+        JsonObject textures = json.getAsJsonObject("textures");
+
+        if (!textures.has(boneName))
+        {
+            return;
+        }
+
+        textures.remove(boneName);
+
+        if (textures.entrySet().isEmpty())
+        {
+            json.remove("textures");
+        }
+
+        try (FileWriter writer = new FileWriter(config))
+        {
+            if (json.entrySet().isEmpty())
+            {
+                writer.close();
+                config.delete();
+            }
+            else
+            {
+                writer.write(json.toString());
+            }
+
+            ChameleonModel model = chameleonModels.get(key);
+
+            if (model != null)
+            {
+                model.defaultBoneSkins.remove(boneName);
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 }

@@ -299,26 +299,16 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
 
         if (ChameleonRenderer.postRender(model, boneName))
         {
-            // Reset rotation to match arm's forward direction if needed, 
-            // but postRender already applies bone's rotation.
-            // Items in hand usually need a small adjustment.
-            
             if (side == EnumHandSide.LEFT)
             {
                 GlStateManager.rotate(180, 0, 1, 0);
             }
 
-            // Clean slate rotation logic
-            // The item renders normally upright. The bone is probably pointing down.
-            // So we just need to rotate it so the handle is in the hand, pointing forward.
-            
-            GlStateManager.rotate(-90, 1, 0, 0); // Point item forward
-
-            // Translate into the hand (upwards and slightly forward relative to bone)
+            GlStateManager.rotate(-90, 1, 0, 0);
             GlStateManager.translate(0, 0.15, 0.0);
-            
-            Minecraft.getMinecraft().getItemRenderer().renderItemSide(target, stack, 
-                side == EnumHandSide.RIGHT ? ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND : ItemCameraTransforms.TransformType.THIRD_PERSON_LEFT_HAND, 
+
+            Minecraft.getMinecraft().getItemRenderer().renderItemSide(target, stack,
+                side == EnumHandSide.RIGHT ? ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND : ItemCameraTransforms.TransformType.THIRD_PERSON_LEFT_HAND,
                 side == EnumHandSide.LEFT);
         }
 
@@ -353,13 +343,9 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
         this.applyPose(model, partialTicks);
 
         /* Render the model */
-        ChameleonRenderer.defaultSkin = this.skin;
-        ChameleonRenderer.boneSkins = this.boneSkins;
-        ChameleonRenderer.defaultBoneSkins = chameleonModel.defaultBoneSkins;
-
         boolean hurtLight = RenderLightmap.set(target, partialTicks);
 
-        ChameleonRenderer.render(model);
+        ChameleonRenderer.render(model, this.skin, this.boneSkins, chameleonModel.defaultBoneSkins);
 
         if (hurtLight)
         {

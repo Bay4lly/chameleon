@@ -10,8 +10,6 @@ import mchorse.chameleon.lib.data.model.ModelPolyMesh;
 import mchorse.chameleon.lib.data.model.ModelQuad;
 import mchorse.chameleon.lib.data.model.ModelVertex;
 import mchorse.chameleon.lib.utils.MatrixStack;
-import mchorse.chameleon.metamorph.pose.AnimatedPose;
-import mchorse.chameleon.metamorph.pose.AnimatedPoseTransform;
 import mchorse.mclib.utils.Interpolation;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -22,6 +20,9 @@ import net.minecraft.client.renderer.Tessellator;
 import mchorse.mclib.client.render.VertexBuilder;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.client.Minecraft;
+import org.lwjgl.opengl.GL11;
+
+import java.util.Map;
 
 /**
  * Cube renderer
@@ -39,6 +40,19 @@ public class ChameleonCubeRenderer implements IChameleonRenderProcessor
     /* Temporary variables to avoid allocating and GC vectors */
     private Vector3f normal = new Vector3f();
     private Vector4f vertex = new Vector4f();
+
+    private ResourceLocation currentSkin;
+    private ResourceLocation defaultSkin;
+    private Map<String, ResourceLocation> boneSkins;
+    private Map<String, ResourceLocation> defaultBoneSkins;
+
+    public void prepare(ResourceLocation skin, Map<String, ResourceLocation> boneSkins, Map<String, ResourceLocation> defaultBoneSkins)
+    {
+        this.currentSkin = skin;
+        this.defaultSkin = skin;
+        this.boneSkins = boneSkins;
+        this.defaultBoneSkins = defaultBoneSkins;
+    }
 
     @Override
     public boolean renderBone(BufferBuilder builder, MatrixStack stack, ModelBone bone)
@@ -59,19 +73,19 @@ public class ChameleonCubeRenderer implements IChameleonRenderProcessor
         lightX = (int) Interpolation.LINEAR.interpolate(lightX, 240, bone.glow);
 
         ResourceLocation boneSkin = null;
-        if (ChameleonRenderer.boneSkins != null && ChameleonRenderer.boneSkins.containsKey(bone.id)) {
-            boneSkin = ChameleonRenderer.boneSkins.get(bone.id);
-        } else if (ChameleonRenderer.defaultBoneSkins != null && ChameleonRenderer.defaultBoneSkins.containsKey(bone.id)) {
-            boneSkin = ChameleonRenderer.defaultBoneSkins.get(bone.id);
+        if (this.boneSkins != null && this.boneSkins.containsKey(bone.id)) {
+            boneSkin = this.boneSkins.get(bone.id);
+        } else if (this.defaultBoneSkins != null && this.defaultBoneSkins.containsKey(bone.id)) {
+            boneSkin = this.defaultBoneSkins.get(bone.id);
         }
 
-        ResourceLocation skin = boneSkin != null ? boneSkin : ChameleonRenderer.defaultSkin;
+        ResourceLocation skin = boneSkin != null ? boneSkin : this.defaultSkin;
 
-        if (skin != null && !skin.equals(ChameleonRenderer.currentSkin)) {
+        if (skin != null && !skin.equals(this.currentSkin)) {
             Tessellator.getInstance().draw();
             Minecraft.getMinecraft().renderEngine.bindTexture(skin);
-            builder.begin(org.lwjgl.opengl.GL11.GL_QUADS, VertexBuilder.getFormat(true, true, true, true));
-            ChameleonRenderer.currentSkin = skin;
+            builder.begin(GL11.GL_QUADS, VertexBuilder.getFormat(true, true, true, true));
+            this.currentSkin = skin;
         }
 
         for (ModelCube cube : bone.cubes)

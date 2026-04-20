@@ -30,13 +30,6 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import java.io.File;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import java.io.FileReader;
-import java.io.FileWriter;
-
 /**
  * Custom model morph panel which allows editing custom textures for materials of the custom model morph
  */
@@ -118,18 +111,18 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         this.skinBone = new GuiButtonElement(mc, IKey.lang("chameleon.gui.editor.pick_skin_bone"), (b) ->
         {
             this.picker.refresh();
-            ResourceLocation current = this.morph.boneSkins.get(this.editor.chameleonModelRenderer.boneName);
+            final String boneName = this.editor.chameleonModelRenderer.boneName;
+            ResourceLocation current = this.morph.boneSkins.get(boneName);
             if (current == null) {
                 current = this.morph.skin;
             }
             this.picker.fill(current);
             this.picker.callback = (rl) -> {
                 if (rl != null) {
-                    this.morph.boneSkins.put(this.editor.chameleonModelRenderer.boneName, RLUtils.clone(rl));
+                    this.morph.boneSkins.put(boneName, RLUtils.clone(rl));
                 } else {
-                    this.morph.boneSkins.remove(this.editor.chameleonModelRenderer.boneName);
+                    this.morph.boneSkins.remove(boneName);
                 }
-                this.editor.chameleonModelRenderer.boneName = this.editor.chameleonModelRenderer.boneName;
             };
             this.add(this.picker);
             this.picker.resize();
@@ -139,7 +132,7 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         {
             ResourceLocation current = this.morph.boneSkins.get(this.editor.chameleonModelRenderer.boneName);
             if (current != null) {
-                this.saveDefaultBoneSkin(this.editor.chameleonModelRenderer.boneName, current);
+                mchorse.chameleon.ClientProxy.saveDefaultBoneSkin(this.morph.getKey(), this.editor.chameleonModelRenderer.boneName, current);
             }
         });
 
@@ -151,7 +144,7 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
 
         this.resetDefault = new GuiButtonElement(mc, IKey.lang("chameleon.gui.editor.reset_default"), (b) ->
         {
-            this.removeDefaultBoneSkin(this.editor.chameleonModelRenderer.boneName);
+            mchorse.chameleon.ClientProxy.removeDefaultBoneSkin(this.morph.getKey(), this.editor.chameleonModelRenderer.boneName);
             this.pickBone(this.editor.chameleonModelRenderer.boneName);
         });
 
@@ -407,89 +400,6 @@ public class GuiChameleonMainPanel extends GuiMorphPanel<ChameleonMorph, GuiCham
         if (this.getParent() != null)
         {
             this.getParent().resize();
-        }
-    }
-
-    private void saveDefaultBoneSkin(String boneName, ResourceLocation current)
-    {
-        File folder = new File(mchorse.chameleon.ClientProxy.modelsFile, this.morph.getKey());
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-        File config = new File(folder, "config.json");
-        JsonObject json = new JsonObject();
-        if (config.exists()) {
-            try (FileReader reader = new FileReader(config)) {
-                json = new JsonParser().parse(reader).getAsJsonObject();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        
-        JsonObject textures;
-        if (json.has("textures") && json.get("textures").isJsonObject()) {
-            textures = json.getAsJsonObject("textures");
-        } else {
-            textures = new JsonObject();
-            json.add("textures", textures);
-        }
-        
-        textures.addProperty(boneName, current.toString());
-        
-        try (FileWriter writer = new FileWriter(config)) {
-            writer.write(json.toString());
-            
-            // Also update the loaded model in ClientProxy
-            ChameleonModel model = this.morph.getModel();
-            if (model != null) {
-                model.defaultBoneSkins.put(boneName, current);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void removeDefaultBoneSkin(String boneName)
-    {
-        File folder = new File(mchorse.chameleon.ClientProxy.modelsFile, this.morph.getKey());
-        File config = new File(folder, "config.json");
-        if (!config.exists()) {
-            return;
-        }
-
-        JsonObject json = new JsonObject();
-        try (FileReader reader = new FileReader(config)) {
-            json = new JsonParser().parse(reader).getAsJsonObject();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        if (json.has("textures") && json.get("textures").isJsonObject()) {
-            JsonObject textures = json.getAsJsonObject("textures");
-            if (textures.has(boneName)) {
-                textures.remove(boneName);
-                
-                if (textures.entrySet().isEmpty()) {
-                    json.remove("textures");
-                }
-
-                try (FileWriter writer = new FileWriter(config)) {
-                    if (json.entrySet().isEmpty()) {
-                        writer.close();
-                        config.delete();
-                    } else {
-                        writer.write(json.toString());
-                    }
-                    
-                    // Also update the loaded model in ClientProxy
-                    ChameleonModel model = this.morph.getModel();
-                    if (model != null) {
-                        model.defaultBoneSkins.remove(boneName);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 

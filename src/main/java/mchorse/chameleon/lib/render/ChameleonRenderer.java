@@ -13,9 +13,9 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.lwjgl.opengl.GL11;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import java.util.Map;
-import java.util.HashMap;
 
 @SideOnly(Side.CLIENT)
 public class ChameleonRenderer
@@ -25,11 +25,6 @@ public class ChameleonRenderer
     private static final ChameleonPostRenderer POST_RENDERER = new ChameleonPostRenderer();
     private static final ChameleonAxisRenderer AXIS_RENDERER = new ChameleonAxisRenderer();
 
-    public static ResourceLocation currentSkin;
-    public static ResourceLocation defaultSkin;
-    public static Map<String, ResourceLocation> boneSkins;
-    public static Map<String, ResourceLocation> defaultBoneSkins;
-
     /* Specific utility methods */
 
     /**
@@ -37,7 +32,7 @@ public class ChameleonRenderer
      *
      * The texture should be bind beforehand
      */
-    public static void render(Model model)
+    public static void render(Model model, ResourceLocation skin, Map<String, ResourceLocation> boneSkins, Map<String, ResourceLocation> defaultBoneSkins)
     {
         GlStateManager.disableCull();
         GlStateManager.enableRescaleNormal();
@@ -45,9 +40,10 @@ public class ChameleonRenderer
 
         GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
-        if (defaultSkin != null) {
-            net.minecraft.client.Minecraft.getMinecraft().renderEngine.bindTexture(defaultSkin);
-            currentSkin = defaultSkin;
+        CUBE_RENDERER.prepare(skin, boneSkins, defaultBoneSkins);
+
+        if (skin != null) {
+            Minecraft.getMinecraft().renderEngine.bindTexture(skin);
         }
 
         BufferBuilder builder = Tessellator.getInstance().getBuffer();

@@ -211,7 +211,7 @@ public class ModelParser
 
                     normal.cross(v2, v1);
 
-                    if (normal.lengthSquared() > 0)
+                    if (normal.lengthSquared() > 1e-6f)
                     {
                         normal.normalize();
                     }
