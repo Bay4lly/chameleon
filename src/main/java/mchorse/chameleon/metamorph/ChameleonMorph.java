@@ -299,11 +299,6 @@ public class ChameleonMorph extends AbstractMorph implements IBodyPartProvider, 
 
         if (ChameleonRenderer.postRender(model, boneName))
         {
-            if (side == EnumHandSide.LEFT)
-            {
-                GlStateManager.rotate(180, 0, 1, 0);
-            }
-
             GlStateManager.rotate(-90, 1, 0, 0);
             GlStateManager.translate(0, 0.15, 0.0);
 
