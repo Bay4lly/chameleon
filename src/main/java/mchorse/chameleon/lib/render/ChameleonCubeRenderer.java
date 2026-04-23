@@ -95,44 +95,102 @@ public class ChameleonCubeRenderer implements IChameleonRenderProcessor
 
         if (bone.polyMesh != null)
         {
-            renderMesh(builder, stack, bone.polyMesh, lightX, lightY, bone.shading);
+            /* Flush the current GL_QUADS batch before switching to GL_TRIANGLES for the mesh */
+            ResourceLocation activeSkin = this.currentSkin;
+            Tessellator.getInstance().draw();
+
+            renderMesh(stack, bone.polyMesh, lightX, lightY, bone.shading);
+
+            /* Restart GL_QUADS batch for any subsequent cubes/bones */
+            if (activeSkin != null) {
+                Minecraft.getMinecraft().renderEngine.bindTexture(activeSkin);
+            }
+            builder.begin(GL11.GL_QUADS, VertexBuilder.getFormat(true, true, true, true));
         }
 
         return false;
     }
 
-    private void renderMesh(BufferBuilder builder, MatrixStack stack, ModelPolyMesh mesh, int lightX, int lightY, boolean shading)
+    /**
+     * Renders a poly mesh using GL_TRIANGLES with calcTangent after every triangle,
+     * matching Blockbuster's OBJ renderer pipeline for correct shader mod support.
+     * Each polygon (tri or quad) is triangulated as fan triangles from vertex 0.
+     */
+    private void renderMesh(MatrixStack stack, ModelPolyMesh mesh, int lightX, int lightY, boolean shading)
     {
+        Tessellator tess = Tessellator.getInstance();
+        BufferBuilder builder = tess.getBuffer();
+        builder.begin(GL11.GL_TRIANGLES, VertexBuilder.getFormat(true, true, true, true));
+
         for (ModelPolyMesh.ModelPoly poly : mesh.polys)
         {
-            for (ModelPolyMesh.ModelPolyVertex vertex : poly.vertices)
+            int size = poly.vertices.size();
+            if (size < 3) continue;
+
+            /* Compute face normal in local space, then apply normal matrix — same as renderCube */
+            if (shading)
             {
-                Vector3f position = mesh.positions.get(vertex.positionIndex);
-                Vector3f normal = mesh.normals.get(vertex.normalIndex);
-                Vector2f uv = mesh.uvs.get(vertex.uvIndex);
+                Vector3f p0 = mesh.positions.get(poly.vertices.get(0).positionIndex);
+                Vector3f p1 = mesh.positions.get(poly.vertices.get(1).positionIndex);
+                Vector3f p2 = mesh.positions.get(poly.vertices.get(2).positionIndex);
 
-                this.vertex.set(position);
-                this.vertex.w = 1;
-                stack.getModelMatrix().transform(this.vertex);
+                Vector3f e1 = new Vector3f(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
+                Vector3f e2 = new Vector3f(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z);
 
-                if (shading)
+                this.normal.cross(e2, e1);
+
+                if (this.normal.lengthSquared() > 0)
                 {
-                    this.normal.set(normal);
-                    stack.getNormalMatrix().transform(this.normal);
+                    this.normal.normalize();
                 }
                 else
                 {
                     this.normal.set(0, 1, 0);
                 }
 
-                builder.pos(this.vertex.x, this.vertex.y, this.vertex.z)
-                    .color(this.r, this.g, this.b, this.a)
-                    .tex(uv.x, uv.y)
-                    .lightmap(lightY, lightX)
-                    .normal(this.normal.x, this.normal.y, this.normal.z)
-                    .endVertex();
+                stack.getNormalMatrix().transform(this.normal);
+
+                if (this.normal.lengthSquared() > 0)
+                {
+                    this.normal.normalize();
+                }
+            }
+            else
+            {
+                this.normal.set(0, 1, 0);
+            }
+
+            /* Fan-triangulate: (0,1,2), (0,2,3), (0,3,4) ... */
+            for (int i = 1; i < size - 1; i++)
+            {
+                writeVertex(builder, stack, mesh, poly.vertices.get(0), lightX, lightY);
+                writeVertex(builder, stack, mesh, poly.vertices.get(i), lightX, lightY);
+                writeVertex(builder, stack, mesh, poly.vertices.get(i + 1), lightX, lightY);
+
+                /* calcTangent for shader mod tangent space — identical to Blockbuster OBJ */
+                VertexBuilder.calcTangent(builder, false);
             }
         }
+
+        tess.draw();
+    }
+
+    private void writeVertex(BufferBuilder builder, MatrixStack stack, ModelPolyMesh mesh,
+                             ModelPolyMesh.ModelPolyVertex v, int lightX, int lightY)
+    {
+        Vector3f position = mesh.positions.get(v.positionIndex);
+        Vector2f uv = mesh.uvs.get(v.uvIndex);
+
+        this.vertex.set(position);
+        this.vertex.w = 1;
+        stack.getModelMatrix().transform(this.vertex);
+
+        builder.pos(this.vertex.x, this.vertex.y, this.vertex.z)
+            .color(this.r, this.g, this.b, this.a)
+            .tex(uv.x, uv.y)
+            .lightmap(lightY, lightX)
+            .normal(this.normal.x, this.normal.y, this.normal.z)
+            .endVertex();
     }
 
     private void renderCube(BufferBuilder builder, MatrixStack stack, ModelCube cube, int lightX, int lightY, boolean shading)
@@ -159,6 +217,11 @@ public class ChameleonCubeRenderer implements IChameleonRenderProcessor
                 if (this.normal.getX() < 0 && (cube.size.y == 0 || cube.size.z == 0)) this.normal.x *= -1;
                 if (this.normal.getY() < 0 && (cube.size.x == 0 || cube.size.z == 0)) this.normal.y *= -1;
                 if (this.normal.getZ() < 0 && (cube.size.x == 0 || cube.size.y == 0)) this.normal.z *= -1;
+
+                if (this.normal.lengthSquared() > 0)
+                {
+                    this.normal.normalize();
+                }
             }
             else
             {

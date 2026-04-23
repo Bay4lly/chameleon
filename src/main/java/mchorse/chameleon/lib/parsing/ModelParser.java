@@ -184,6 +184,25 @@ public class ModelParser
             }
         }
 
+        boolean hasNormals = object.has("normals");
+        if (hasNormals)
+        {
+            for (JsonElement element : object.get("normals").getAsJsonArray())
+            {
+                Vector3f vector = new Vector3f();
+
+                parseVector(element, vector);
+                vector.x *= -1;
+
+                if (vector.lengthSquared() > 1e-6f)
+                {
+                    vector.normalize();
+                }
+                
+                mesh.normals.add(vector);
+            }
+        }
+
         if (object.has("polys"))
         {
             for (JsonElement element : object.get("polys").getAsJsonArray())
@@ -192,37 +211,42 @@ public class ModelParser
                 JsonArray vertexArrayJson = element.getAsJsonArray();
                 int size = vertexArrayJson.size();
 
-                Vector3f normal = new Vector3f(0, 1, 0);
+                int normalIndex = -1;
 
-                if (size >= 3)
+                if (!hasNormals)
                 {
-                    int idx0 = vertexArrayJson.get(size - 1).getAsJsonArray().get(0).getAsInt();
-                    int idx1 = vertexArrayJson.get(size - 2).getAsJsonArray().get(0).getAsInt();
-                    int idx2 = vertexArrayJson.get(size - 3).getAsJsonArray().get(0).getAsInt();
+                    Vector3f normal = new Vector3f(0, 1, 0);
 
-                    Vector3f p0 = mesh.positions.get(idx0);
-                    Vector3f p1 = mesh.positions.get(idx1);
-                    Vector3f p2 = mesh.positions.get(idx2);
-
-                    Vector3f v1 = new Vector3f(p1);
-                    v1.sub(p0);
-                    Vector3f v2 = new Vector3f(p2);
-                    v2.sub(p0);
-
-                    normal.cross(v2, v1);
-
-                    if (normal.lengthSquared() > 1e-6f)
+                    if (size >= 3)
                     {
-                        normal.normalize();
+                        int idx0 = vertexArrayJson.get(0).getAsJsonArray().get(0).getAsInt();
+                        int idx1 = vertexArrayJson.get(1).getAsJsonArray().get(0).getAsInt();
+                        int idx2 = vertexArrayJson.get(2).getAsJsonArray().get(0).getAsInt();
+
+                        Vector3f p0 = mesh.positions.get(idx0);
+                        Vector3f p1 = mesh.positions.get(idx1);
+                        Vector3f p2 = mesh.positions.get(idx2);
+
+                        Vector3f v1 = new Vector3f(p1);
+                        v1.sub(p0);
+                        Vector3f v2 = new Vector3f(p2);
+                        v2.sub(p0);
+
+                        normal.cross(v1, v2);
+
+                        if (normal.lengthSquared() > 1e-6f)
+                        {
+                            normal.normalize();
+                        }
+                        else
+                        {
+                            normal.set(0, 1, 0);
+                        }
                     }
-                    else
-                    {
-                        normal.set(0, 1, 0);
-                    }
+
+                    normalIndex = mesh.normals.size();
+                    mesh.normals.add(normal);
                 }
-
-                int normalIndex = mesh.normals.size();
-                mesh.normals.add(normal);
 
                 for (int i = size - 1; i >= 0; i--)
                 {
@@ -230,7 +254,7 @@ public class ModelParser
 
                     poly.vertices.add(new ModelPolyMesh.ModelPolyVertex(
                         vertexArray.get(0).getAsInt(),
-                        normalIndex,
+                        hasNormals ? vertexArray.get(1).getAsInt() : normalIndex,
                         vertexArray.get(2).getAsInt()
                     ));
                 }
